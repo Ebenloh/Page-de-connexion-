@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Update Matches</title>
+    <title>Update Matches (Admin)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,7 +14,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
         }
 
         .container {
@@ -24,7 +24,7 @@
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             text-align: center;
-            width: 80%;
+            width: 90%;
             max-width: 500px;
         }
 
@@ -32,10 +32,10 @@
             margin-bottom: 1rem;
         }
 
-        textarea {
-            width: 100%;
-            height: 100px;
+        input[type="text"], textarea {
+            width: calc(100% - 20px);
             padding: 10px;
+            margin-bottom: 10px;
             border: none;
             border-radius: 5px;
             font-size: 1rem;
@@ -45,8 +45,12 @@
             outline: none;
         }
 
-        textarea::placeholder {
+        input[type="text"]::placeholder, textarea::placeholder {
             color: rgba(255, 255, 255, 0.7);
+        }
+
+        textarea {
+            height: 100px;
         }
 
         button {
@@ -64,23 +68,108 @@
         button:hover {
             background: #0099cc;
         }
+
+        #message {
+            margin-top: 1rem;
+            font-weight: bold;
+        }
     </style>
+
+    <!-- 1. INTÉGRATION DES SDKs FIREBASE (v8.10.0 - Simple HTML) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <!-- 2. VOTRE CONFIGURATION FIREBASE ET INITIALISATION -->
+    <script>
+        // Votre configuration Firebase (copiée de la console)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBS0PskadPYC5mo0AilAPGmw5ALo6ykIfE",
+            authDomain: "the-results-speak-for-us.firebaseapp.com",
+            databaseURL: "https://the-results-speak-for-us-default-rtdb.firebaseio.com",
+            projectId: "the-results-speak-for-us",
+            storageBucket: "the-results-speak-for-us.firebasestorage.app",
+            messagingSenderId: "88406656052",
+            appId: "1:88406656052:web:8da5ffe99509681fa53661",
+            measurementId: "G-YN7QVYVDP1"
+        };
+
+        // Initialisation de Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database(); // Référence à la Realtime Database
+    </script>
 </head>
 <body>
 
     <div class="container">
         <form id="update-form">
-            <h3>Update Matches</h3>
-            <textarea id="matches" placeholder="Enter match predictions..."></textarea><br>
-            <button type="button" onclick="updateMatches()">Update</button>
+            <h3>Update Match Predictions</h3>
+            <!-- J'ai remplacé le textarea unique par des champs structurés pour l'administration -->
+            <input type="text" id="domicile" placeholder="Équipe Domicile (ex: Lille)">
+            <input type="text" id="exterieur" placeholder="Équipe Extérieure (ex: Monaco)">
+            <input type="text" id="resultat" placeholder="Pronostic (ex: 1-2)">
+            <textarea id="description" placeholder="Description / Analyse du Match (Optionnel)"></textarea><br>
+            <button type="button" onclick="saveMatch()">Enregistrer le Match</button>
+            <div id="message"></div>
+            
+            <hr style="margin: 20px 0; border-color: rgba(255, 255, 255, 0.2);">
+
+            <!-- Bouton pour vider TOUS les matchs -->
+            <button type="button" style="background: #e74c3c;" onclick="clearAllMatches()">Vider Tous les Matchs</button>
+
         </form>
     </div>
 
     <script>
-        function updateMatches() {
-            const matchList = document.getElementById("matches").value;
-            localStorage.setItem("matches", matchList);
-            alert("Matches updated successfully!");
+        // Référence à l'élément de message
+        const messageElement = document.getElementById("message");
+
+        // Nouvelle fonction pour enregistrer un match dans Firebase
+        function saveMatch() {
+            const domicile = document.getElementById("domicile").value.trim();
+            const exterieur = document.getElementById("exterieur").value.trim();
+            const resultat = document.getElementById("resultat").value.trim();
+            const description = document.getElementById("description").value.trim();
+
+            if (!domicile || !exterieur || !resultat) {
+                messageElement.textContent = "Veuillez remplir les champs Domicile, Extérieur et Pronostic.";
+                return;
+            }
+
+            // Référence à la branche 'matchs'
+            db.ref('matchs').push({
+                domicile: domicile,
+                exterieur: exterieur,
+                resultat: resultat,
+                description: description,
+                timestamp: Date.now() 
+            })
+            .then(() => {
+                messageElement.textContent = "✅ Match enregistré avec succès ! Visible publiquement.";
+                
+                // Vider les champs
+                document.getElementById("domicile").value = '';
+                document.getElementById("exterieur").value = '';
+                document.getElementById("resultat").value = '';
+                document.getElementById("description").value = '';
+            })
+            .catch((error) => {
+                messageElement.textContent = "❌ Erreur lors de l'enregistrement. Voir la console.";
+                console.error("Erreur Firebase : ", error);
+            });
+        }
+
+        // Fonction pour vider toute la liste de matchs
+        function clearAllMatches() {
+            if (confirm("Êtes-vous sûr de vouloir supprimer TOUS les matchs de la base de données ? Cette action est irréversible.")) {
+                db.ref('matchs').remove()
+                .then(() => {
+                    messageElement.textContent = "🗑️ Tous les matchs ont été supprimés avec succès.";
+                })
+                .catch((error) => {
+                    messageElement.textContent = "❌ Erreur lors de la suppression. Voir la console.";
+                    console.error("Erreur Firebase : ", error);
+                });
+            }
         }
     </script>
 
